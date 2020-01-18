@@ -1,30 +1,45 @@
 #![allow(deprecated)]
 
-extern crate rtb_rs;
-extern crate winit;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use winit::event_loop::{EventLoop, ControlFlow};
+use winit::event::{Event, WindowEvent};
+use winit::window::{WindowBuilder};
+
 
 fn main() {
-    let mut events_loop = winit::EventsLoop::new();
+    let event_loop = EventLoop::new();
 
-    let window = winit::WindowBuilder::new()
+    let window = WindowBuilder::new()
         .with_title("winit window")
-        .build(&events_loop)
+        .build(&event_loop)
         .unwrap();
 
     let test_string = "test_string";
 
+    let raw_window_handle = match window.raw_window_handle(){
+        RawWindowHandle::MacOS(h) => h.ns_window,
+        RawWindowHandle::Windows(h) => h.hwnd, // FIXME: correct?
+        RawWindowHandle::XcbHandle(h) => h.window, // FIXME: correct?
+        RawWindowHandle::XlibHandle(h) => h.window, // FIXME: correct?
+        _ => unimplemented!(),
+    } as *mut std::ffi::c_void;
+
     let _ = rtb_rs::Window::attach(
-        unsafe { window.platform_window() } as *mut std::ffi::c_void,
+        raw_window_handle,
         move |event| {
             println!("{:?}: {}", event, test_string);
         },
     );
 
-    events_loop.run_forever(|event| match event {
-        winit::Event::WindowEvent {
-            event: winit::WindowEvent::CloseRequested,
-            ..
-        } => winit::ControlFlow::Break,
-        _ => winit::ControlFlow::Continue,
+    event_loop.run(move |event, _, control_flow| {
+       *control_flow = ControlFlow::Poll;
+
+       match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = ControlFlow::Exit,
+            _ => (),
+        }
     });
 }

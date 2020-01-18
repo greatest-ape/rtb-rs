@@ -22,5 +22,5 @@ pub unsafe fn resize_view_to_window(view: id) {
     let content_view:id = msg_send![window, contentView];
     let content_frame:NSRect = msg_send![content_view, frame];
 
-    msg_send![view, setFrame:content_frame];
+    let _: () = msg_send![view, setFrame:content_frame];
 }
